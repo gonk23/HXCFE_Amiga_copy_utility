@@ -51,6 +51,9 @@
 #define VERSION "0.1"
 //#define DBGMODE 1
 #define BUFFER_SIZE 16
+// Notes on BUFFER_SIZE:
+//   * fwrite with a BUFFER_SIZE > 16 causes Amiga to crash!
+//   * fl_fread with BUFFER_SIZE > 16 doesn't offer any improved performance.
 #define PATH_SIZE 512
 
 static unsigned long last_setlbabase;
