@@ -1,0 +1,16 @@
+*.o
+/foo.map
+/hxcfe
+/os-include
+/os-lib
+/vbcc-include
+/vbcc-lib
+/share
+/etc
+/doc
+/include
+/lib
+/m68k-amigaos
+/bin
+/info
+/man
