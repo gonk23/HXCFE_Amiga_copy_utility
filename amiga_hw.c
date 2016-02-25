@@ -94,13 +94,16 @@ static const unsigned short MFM_tab[]=
 	0x554A,0x5549,0x5544,0x5545,0x5552,0x5551,0x5554,0x5555
 };
 
-static unsigned char * mfmtobinLUT_L;
-static unsigned char * mfmtobinLUT_H;
+static unsigned char * mfmtobinLUT_L = NULL;
+static unsigned char * mfmtobinLUT_H = NULL;
+#define MFMTOBINLUT_SIZE 256
 
 #define MFMTOBIN(W) ( mfmtobinLUT_H[W>>8] | mfmtobinLUT_L[W&0xFF] )
 
-static unsigned short * track_buffer;
-static unsigned short * track_buffer_wr;
+static unsigned short * track_buffer = NULL;
+#define TRACK_BUFFER_SIZE 24*1024
+static unsigned short * track_buffer_wr = NULL;
+#define TRACK_BUFFER_WR_SIZE 2*1024
 
 static unsigned char validcache;
 
@@ -756,10 +759,17 @@ unsigned char readsector(unsigned char sectornum,unsigned char * data,unsigned c
 void alloc_error()
 {
 	printf("ERROR: Memory Allocation Error -> No more free mem ?\n");
-	exit(1);
 }
 
-void init_amiga_fdc(unsigned char drive)
+void free_mem_amiga_fdc(void)
+{
+    if(mfmtobinLUT_L!=NULL) FreeMem(mfmtobinLUT_L,MFMTOBINLUT_SIZE);
+    if(mfmtobinLUT_H!=NULL) FreeMem(mfmtobinLUT_H,MFMTOBINLUT_SIZE);
+    if(track_buffer!=NULL) FreeMem(track_buffer,TRACK_BUFFER_SIZE);
+    if(track_buffer_wr!=NULL) FreeMem(track_buffer_wr,TRACK_BUFFER_WR_SIZE);
+}
+
+int init_amiga_fdc(unsigned char drive)
 {
 	unsigned short i;
 
@@ -770,8 +780,8 @@ void init_amiga_fdc(unsigned char drive)
 
 	validcache=0;
 
-	mfmtobinLUT_L=(unsigned char*)AllocMem(256,MEMF_CHIP);
-	mfmtobinLUT_H=(unsigned char*)AllocMem(256,MEMF_CHIP);
+	mfmtobinLUT_L=(unsigned char*)AllocMem(MFMTOBINLUT_SIZE,MEMF_CHIP);
+	mfmtobinLUT_H=(unsigned char*)AllocMem(MFMTOBINLUT_SIZE,MEMF_CHIP);
 	if(mfmtobinLUT_L && mfmtobinLUT_H)
 	{
 		for(i=0;i<256;i++)
@@ -783,26 +793,32 @@ void init_amiga_fdc(unsigned char drive)
 	else
 	{
 		alloc_error();
+        free_mem_amiga_fdc();
+        return 0;
 	}
 
-	track_buffer=(unsigned short*)AllocMem(24*1024,MEMF_CHIP);
+	track_buffer=(unsigned short*)AllocMem(TRACK_BUFFER_SIZE,MEMF_CHIP);
 	if(track_buffer)
 	{
-		memset(track_buffer,0,24*1024);
+		memset(track_buffer,0,TRACK_BUFFER_SIZE);
 	}
 	else
 	{
 		alloc_error();
+        free_mem_amiga_fdc();
+        return 0;
 	}
 
-	track_buffer_wr=(unsigned short*)AllocMem(2*1024,MEMF_CHIP);
+	track_buffer_wr=(unsigned short*)AllocMem(TRACK_BUFFER_WR_SIZE,MEMF_CHIP);
 	if(track_buffer_wr)
 	{
-		memset(track_buffer_wr,0,2*1024);
+		memset(track_buffer_wr,0,TRACK_BUFFER_WR_SIZE);
 	}
 	else
 	{
 		alloc_error();
+        free_mem_amiga_fdc();
+        return 0;
 	}
 
 	Forbid();
@@ -812,11 +828,24 @@ void init_amiga_fdc(unsigned char drive)
 
 	if(jumptotrack(255))
 	{
-		printf("ERROR: init_amiga_fdc -> failure while seeking the track 00!\n");
-		exit(1);
+		printf("ERROR: init_amiga_fdc -> failure while seeking the track to 255!\n");
+        free_mem_amiga_fdc();
+        return 0;
 	}
 	Delay(12);
 	WRITEREG_W(INTREQ,0x0002);
 
 	Permit();
+
+    return 1;
+}
+
+void shutdown_amiga_fdc(void)
+{
+    if(jumptotrack(0))
+	{
+		printf("ERROR: shutdown_amiga_fdc -> failure while seeking the track to 0!\n");
+	}
+
+    free_mem_amiga_fdc();
 }

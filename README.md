@@ -13,8 +13,8 @@ Limitations:
 * Doesn't do recursive (deep) copies.
 
 Known bugs:
-* Has a memory leak, i.e. chip RAM gets used every time it's run but doesn't get returned on exit. I recommend you reboot after copying your files.
-* Utility will crash if an SD card isn't inserted in the HxC.
+* Chip memory leak if utility fails due to sector read/write errors. I recommend you reboot if you encounter such errors to reclaim the memory.
+* Amiga may crash if an SD card isn't inserted in the HxC.
 
 Download and Installation
 -------------------------

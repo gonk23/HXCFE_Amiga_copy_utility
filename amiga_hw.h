@@ -1,4 +1,5 @@
-void init_amiga_fdc(unsigned char drive);
+int init_amiga_fdc(unsigned char drive);
+void shutdown_amiga_fdc(void);
 unsigned char readsector(unsigned char sectornum,unsigned char * data,unsigned char invalidate_cache);
 unsigned char writesector(unsigned char sectornum,unsigned char * data);
 int jumptotrack(unsigned char t);

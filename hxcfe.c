@@ -48,7 +48,7 @@
 #include "fat_filelib.h"
 
 
-#define VERSION "0.1"
+#define VERSION "0.2"
 //#define DBGMODE 1
 #define BUFFER_SIZE 16
 // Notes on BUFFER_SIZE:
@@ -297,7 +297,7 @@ void normalise_path(char *new_path, char *old_path)
 }
 
 //-------------------------------------------------------------------
-void display_dir(char* path)
+int display_dir(char* path)
 {
     struct fs_dir_list_status dirstat;
 
@@ -317,17 +317,24 @@ void display_dir(char* path)
                 printf("  %12d  %s\n", dirent.size, dirent.filename);
             }
         }
+
+        return 1;
+    }
+    else
+    {
+        return 0;
     }
 }
 
 //-------------------------------------------------------------------
-void copy_file_from_hxc(char *filename_in)
+int copy_file_from_hxc(char *filename_in)
 {
     FL_FILE *fp_in;
     FILE *fp_out;
     char *filename_out;
     char buffer[BUFFER_SIZE];
     int bytes;
+    int ret = 1;
 
     filename_out = strrchr(filename_in, '/');
     if (filename_out == NULL)  //shouldn't happen!
@@ -342,54 +349,66 @@ void copy_file_from_hxc(char *filename_in)
     if ((fp_in = fl_fopen(filename_in, "rb")) == NULL)
     {
         printf("Cannot open input file %s\n", filename_in);
-        exit(1);
+        ret = 0;
     }
-
-    if ((fp_out = fopen(filename_out, "wb")) == NULL)
+    else
     {
-        printf("Cannot open output file %s\n", filename_out);
-        exit(1);
-    }
-
-    while (!fl_feof(fp_in))
-    {
-        if ((bytes = fl_fread(buffer, 1, BUFFER_SIZE, fp_in)) != BUFFER_SIZE)
+        if ((fp_out = fopen(filename_out, "wb")) == NULL)
         {
-            if (!fl_feof(fp_in))  // There is no fl_ferror function
+            printf("Cannot open output file %s\n", filename_out);
+            ret = 0;
+        }
+        else
+        {
+            while (!fl_feof(fp_in))
             {
-                printf("Error while reading input file %s\n", filename_in);
-                exit(1);
+                if ((bytes = fl_fread(buffer, 1, BUFFER_SIZE, fp_in)) != BUFFER_SIZE)
+                {
+                    if (!fl_feof(fp_in))  // There is no fl_ferror function
+                    {
+                        printf("Error while reading input file %s\n", filename_in);
+                        ret = 0;
+                        break;
+                    }
+                }
+
+                if (fwrite(buffer, 1, bytes, fp_out) != bytes)
+                {
+                    printf("Error while writing output file %s\n", filename_out);
+                    ret = 0;
+                    break;
+                }
             }
+
+            fclose(fp_out);
         }
-        if (fwrite(buffer, 1, bytes, fp_out) != bytes)
-        {
-            printf("Error while writing output file %s\n", filename_out);
-            exit(1);
-        }
+
+        fl_fclose(fp_in);
     }
 
-    fclose(fp_out);
-    fl_fclose(fp_in);
+    if (ret) printf("Copied %s\n", filename_in);
 
-    printf("Copied %s\n", filename_in);
+    return ret;
 }
 
 //-------------------------------------------------------------------
-void construct_full_filename(char *filename_full, char *path, char *filename)
+int construct_full_filename(char *filename_full, char *path, char *filename)
 {
     if (strlen(path)+1+strlen(filename) > PATH_SIZE-1)
     {
         printf("Full filename for path %s filename %s is too long (limit = %d)\n", path, filename, PATH_SIZE-1);
-        exit(1);
+        return 0;
     }
 
     strcpy(filename_full, path);
     if (filename_full[strlen(filename_full)-1] != '/') strcat(filename_full, "/");
     strcat(filename_full, filename);
+
+    return 1;
 }
 
 //-------------------------------------------------------------------
-void copy_dir_from_hxc(char* path)
+int copy_dir_from_hxc(char* path)
 {
     struct fs_dir_list_status dirstat;
     char filename_full[PATH_SIZE];
@@ -402,22 +421,29 @@ void copy_dir_from_hxc(char* path)
         {
             if (!dirent.is_dir)
             {
-                construct_full_filename(filename_full, path, dirent.filename);
-                copy_file_from_hxc(filename_full);
+                if (!construct_full_filename(filename_full, path, dirent.filename)) return 0;
+                if (!copy_file_from_hxc(filename_full)) return 0;
             }
         }
+
+        return 1;
+    }
+    else
+    {
+        return 0;
     }
 }
 
 //-------------------------------------------------------------------
 int main(int argc, char* argv[])
 {
-	unsigned char bootdev;
+	unsigned char devnum;
     char path[PATH_SIZE];
 
     printf("HxC copy utility version %s\n", VERSION);
 
-    if ((argc < 2) || (argc > 3))
+    if (argc > 1) lowercase(argv[1]);
+    if ((argc < 2) || (argc > 3) || ((strcmp(argv[1], "dir") != 0) && (strcmp(argv[1], "copy") != 0)))
     {
         usage(argv[0]);
         exit(1);
@@ -428,51 +454,47 @@ int main(int argc, char* argv[])
 
 	io_floppy_timeout = 0;
 
-	bootdev = 0;
-	while (bootdev < 4 && !test_drive(bootdev)) bootdev++;
-	if(bootdev >= 4) bootdev = 0;
-    printf("Found HxC on %d\n",bootdev);
+	devnum = 0;
+	while (devnum < 4 && !test_drive(devnum)) devnum++;
+	if(devnum >= 4) devnum = 0;
+    printf("Found HxC on %d\n",devnum);
 
-	init_amiga_fdc(bootdev);
-
-	if (media_init())
+	if (init_amiga_fdc(devnum))
     {
-		// Initialise File IO Library
-		fl_init();
+    	if (media_init())
+        {
+    		// Initialise File IO Library
+    		fl_init();
 
-		// Attach media access functions to library
-		if (fl_attach_media(media_read, media_write) != FAT_INIT_OK)
-        {
-			printf("ERROR: Media attach failed !");
-			exit(1);
-		}
-
-        lowercase(argv[1]);
-        if (strcmp(argv[1], "dir") == 0)
-        {
-            display_dir(path);
-        }
-        else if (strcmp(argv[1], "copy") == 0)
-        {
-            if (fl_is_dir(path))
+    		// Attach media access functions to library
+    		if (fl_attach_media(media_read, media_write) != FAT_INIT_OK)
             {
-                copy_dir_from_hxc(path);
-            }
+    			printf("ERROR: Media attach failed !");
+    		}
             else
             {
-                copy_file_from_hxc(path);
+                if (strcmp(argv[1], "dir") == 0)
+                {
+                    display_dir(path);
+                }
+                else if (strcmp(argv[1], "copy") == 0)
+                {
+                    if (fl_is_dir(path))
+                    {
+                        copy_dir_from_hxc(path);
+                    }
+                    else
+                    {
+                        copy_file_from_hxc(path);
+                    }
+                }
             }
-        }
-        else
-        {
-            usage(argv[0]);
-            exit(1);
-        }
 
-        fl_shutdown();
-	}
+            fl_shutdown();
+    	}
 
-    jumptotrack(0);
+        shutdown_amiga_fdc();
+    }
 
     return 0;
 }
