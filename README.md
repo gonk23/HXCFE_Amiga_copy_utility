@@ -1,5 +1,5 @@
-HxC Floppy Emulator copy utility
-================================
+HxC Floppy Emulator copy utility for Amiga
+==========================================
 
 Allows files on the HxC floppy emulator media (e.g. SD card formatted as FAT32) to be copied to the Amiga file system, without needing to use HFE files.
 
