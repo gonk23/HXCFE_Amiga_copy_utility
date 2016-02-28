@@ -1,7 +1,7 @@
-HxC Floppy Emulator SD copy utility
-===================================
+HxC Floppy Emulator copy utility
+================================
 
-Allows files on the HxC SD card (FAT32) to be copied to the Amiga file system, without needing to use HFE files.
+Allows files on the HxC floppy emulator media (e.g. SD card formatted as FAT32) to be copied to the Amiga file system, without needing to use HFE files.
 
 This is especially useful for copying files larger than 880kB (the Amiga floppy disk size).
 
@@ -11,17 +11,18 @@ Limitations:
 * Shorter filenames will be converted to lowercase.
 * Only copies from HxC, i.e. doesn't copy to HxC.
 * Doesn't do recursive (deep) copies.
+* Cannot interrupt it when it is copying.
 
 Known bugs:
 * Chip memory leak if utility fails due to sector read/write errors. I recommend you reboot if you encounter such errors to reclaim the memory.
-* Amiga may crash if an SD card isn't inserted in the HxC.
+* Amiga may crash if media isn't inserted in the HxC floppy emulator.
 
 Download and Installation
 -------------------------
 
 The "hxcfe" program is provided on a HFE image: https://github.com/gonk23/HXCFE_Amiga_copy_utility/raw/master/hxcfe.hfe.zip
 
-Copy the "hxcfe" program in the provided HFE image to C: on the Amiga, i.e. assuming the HxC SD is connected as df1:
+Copy the "hxcfe" program in the provided HFE image to C: on the Amiga, i.e. assuming the HxC floppy emulator is connected as df1:
 
 ```
 copy df1:hxcfe c:
