@@ -14,6 +14,7 @@ Limitations:
 * Cannot interrupt it when it is copying.
 
 Known bugs:
+* Trying to use folders several levels deep may cause a crash.
 * Chip memory leak if utility fails due to sector read/write errors. I recommend you reboot if you encounter such errors to reclaim the memory.
 * Amiga may crash if media isn't inserted in the HxC floppy emulator.
 
